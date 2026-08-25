@@ -63,6 +63,31 @@ XMLNS_RE = re.compile(
     r"(?P<prefix>\sxmlns\s*=\s*)"
     r"(?P<value>\"[^\"]*\"|'[^']*'|[^\s>]+)"
 )
+CSS_NUMBER = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
+RGBA_VALUE_RE = re.compile(
+    rf"rgba\(\s*(?P<red>[+-]?\d+)\s*,\s*"
+    rf"(?P<green>[+-]?\d+)\s*,\s*"
+    rf"(?P<blue>[+-]?\d+)\s*,\s*"
+    rf"(?P<alpha>{CSS_NUMBER})\s*\)",
+    re.IGNORECASE,
+)
+RGBA_TOKEN_RE = re.compile(r"\brgba\s*\(", re.IGNORECASE)
+TRANSPARENT_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9_-])transparent(?![A-Za-z0-9_-])", re.IGNORECASE
+)
+QUOTED_ATTRIBUTE_RE = re.compile(
+    r"(?P<leading>\s+)"
+    r"(?P<name>[^\s=/>]+)"
+    r"(?P<equals>\s*=\s*)"
+    r"(?P<quote>['\"])"
+    r"(?P<value>.*?)"
+    r"(?P=quote)",
+    re.DOTALL,
+)
+COLOR_ATTRIBUTES = ("fill", "stroke")
+PRESENTATION_ATTRIBUTES = frozenset(
+    {"fill", "stroke", "fill-opacity", "stroke-opacity"}
+)
 
 
 def _fail(msg: str) -> NoReturn:
@@ -271,6 +296,16 @@ def _audit_css(css: str, context: str) -> str | None:
     compact = _compact_for_scheme(css).lower()
     if "javascript:" in compact:
         return f"active javascript: URL in {context}"
+    if RGBA_TOKEN_RE.search(css):
+        return (
+            f"unsupported rgba() color in {context}; use a fill/stroke "
+            "presentation attribute"
+        )
+    if TRANSPARENT_TOKEN_RE.search(css):
+        return (
+            f"unsupported transparent color in {context}; use a fill/stroke "
+            "presentation attribute"
+        )
 
     for match in CSS_IMPORT_RE.finditer(css):
         error = _reference_error(
@@ -433,6 +468,156 @@ def _check_source(path: Path) -> CheckedDiagram:
 # --------------------------------------------------------------------------
 
 
+def _parse_opacity(value: str, attribute: str) -> float:
+    try:
+        number = float(value.strip())
+    except ValueError:
+        _fail(f"{attribute} must be a numeric value between 0 and 1; got {value!r}")
+    if not math.isfinite(number):
+        _fail(f"{attribute} must be finite; got {value!r}")
+    if not 0 <= number <= 1:
+        _fail(f"{attribute} must be between 0 and 1; got {value!r}")
+    return number
+
+
+def _normalize_start_tag(
+    opening: str, parsed_attrs: list[tuple[str, str | None]]
+) -> str:
+    attributes = list(QUOTED_ATTRIBUTE_RE.finditer(opening))
+    grouped: dict[str, list[re.Match[str]]] = {}
+    for match in attributes:
+        name = match.group("name").lower()
+        if name in PRESENTATION_ATTRIBUTES:
+            grouped.setdefault(name, []).append(match)
+
+    parsed_counts: dict[str, int] = {}
+    for name, _ in parsed_attrs:
+        lowered = name.lower()
+        if lowered in PRESENTATION_ATTRIBUTES:
+            parsed_counts[lowered] = parsed_counts.get(lowered, 0) + 1
+    for name in PRESENTATION_ATTRIBUTES:
+        if parsed_counts.get(name, 0) != len(grouped.get(name, [])):
+            _fail(
+                f"{name} presentation attributes must use single or double quotes"
+            )
+
+    edits: list[tuple[int, int, str]] = []
+    for color_name in COLOR_ATTRIBUTES:
+        color_attributes = grouped.get(color_name, [])
+        opacity_name = f"{color_name}-opacity"
+        opacity_attributes = grouped.get(opacity_name, [])
+        if len(color_attributes) > 1:
+            _fail(f"duplicate {color_name} presentation attributes are not allowed")
+        if len(opacity_attributes) > 1:
+            _fail(f"duplicate {opacity_name} presentation attributes are not allowed")
+
+        existing_opacity: float | None = None
+        if opacity_attributes:
+            existing_opacity = _parse_opacity(
+                html.unescape(opacity_attributes[0].group("value")), opacity_name
+            )
+        if not color_attributes:
+            continue
+
+        color = color_attributes[0]
+        raw_value = html.unescape(color.group("value")).strip()
+        if raw_value.casefold() == "transparent":
+            edits.append((color.start("value"), color.end("value"), "none"))
+            continue
+
+        rgba = RGBA_VALUE_RE.fullmatch(raw_value)
+        if rgba is None:
+            if RGBA_TOKEN_RE.search(raw_value) or TRANSPARENT_TOKEN_RE.search(raw_value):
+                _fail(
+                    f"unsupported {color_name} color {raw_value!r}; expected "
+                    "transparent or rgba(r,g,b,a)"
+                )
+            continue
+
+        channels = tuple(int(rgba.group(name)) for name in ("red", "green", "blue"))
+        if any(channel < 0 or channel > 255 for channel in channels):
+            _fail(
+                f"{color_name} rgba() RGB channels must be between 0 and 255; "
+                f"got {raw_value!r}"
+            )
+        alpha = _parse_opacity(rgba.group("alpha"), f"{color_name} rgba() alpha")
+        composed_opacity = alpha * (
+            existing_opacity if existing_opacity is not None else 1
+        )
+        opacity_text = _format_number(composed_opacity)
+        hex_color = "#" + "".join(f"{channel:02x}" for channel in channels)
+        edits.append((color.start("value"), color.end("value"), hex_color))
+        if opacity_attributes:
+            opacity = opacity_attributes[0]
+            edits.append(
+                (opacity.start("value"), opacity.end("value"), opacity_text)
+            )
+        else:
+            quote = color.group("quote")
+            edits.append(
+                (
+                    color.end(),
+                    color.end(),
+                    f" {opacity_name}={quote}{opacity_text}{quote}",
+                )
+            )
+
+    normalized = opening
+    for start, end, replacement in sorted(edits, reverse=True):
+        normalized = normalized[:start] + replacement + normalized[end:]
+    return normalized
+
+
+class SvgColorNormalizer(HTMLParser):
+    """Normalize presentation colors without re-serializing unrelated markup."""
+
+    def __init__(self, svg: str) -> None:
+        super().__init__(convert_charrefs=True)
+        self.svg = svg
+        self.line_starts = [0]
+        self.line_starts.extend(match.end() for match in re.finditer("\n", svg))
+        self.edits: list[tuple[int, int, str]] = []
+
+    def _offset(self) -> int:
+        line, column = self.getpos()
+        return self.line_starts[line - 1] + column
+
+    def _record(self, attrs: list[tuple[str, str | None]]) -> None:
+        opening = self.get_starttag_text()
+        if opening is None:
+            raise ValueError("cannot locate start tag")
+        normalized = _normalize_start_tag(opening, attrs)
+        if normalized != opening:
+            start = self._offset()
+            self.edits.append((start, start + len(opening), normalized))
+
+    def handle_starttag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        del tag
+        self._record(attrs)
+
+    def handle_startendtag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        del tag
+        self._record(attrs)
+
+
+def _normalize_presentation_colors(svg: str) -> str:
+    parser = SvgColorNormalizer(svg)
+    try:
+        parser.feed(svg)
+        parser.close()
+    except (ValueError, AssertionError) as exc:
+        _fail(f"cannot normalize SVG presentation colors: {exc}")
+
+    normalized = svg
+    for start, end, replacement in reversed(parser.edits):
+        normalized = normalized[:start] + replacement + normalized[end:]
+    return normalized
+
+
 class SvgLayoutParser(HTMLParser):
     """Find insertion points without re-serializing any source markup."""
 
@@ -563,11 +748,13 @@ def _standalone_svg(svg: str) -> str:
     opening = _ensure_xmlns(svg[: layout.opening_end])
     if layout.root_self_closing:
         body = _expand_self_closing(opening) + FONT_DEFS + "</svg>"
+        body = _normalize_presentation_colors(body)
         return '<?xml version="1.0" encoding="UTF-8"?>\n' + body
 
     body = opening + svg[layout.opening_end :]
     opening_delta = len(opening) - layout.opening_end
-    if layout.first_defs is not None:
+    font_style_present = FONT_IMPORT in html.unescape(svg)
+    if not font_style_present and layout.first_defs is not None:
         defs_start, defs_end, self_closing = layout.first_defs
         defs_start += opening_delta
         defs_end += opening_delta
@@ -582,7 +769,7 @@ def _standalone_svg(svg: str) -> str:
             )
         else:
             body = body[:defs_end] + FONT_STYLE + body[defs_end:]
-    else:
+    elif not font_style_present:
         insert_at = (
             layout.preamble_end
             if layout.preamble_end is not None
@@ -590,6 +777,7 @@ def _standalone_svg(svg: str) -> str:
         )
         insert_at += opening_delta
         body = body[:insert_at] + FONT_DEFS + body[insert_at:]
+    body = _normalize_presentation_colors(body)
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + body
 
 

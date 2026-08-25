@@ -32,7 +32,7 @@ Run the shared extraction implementation:
 python3 skills/diagram-design/scripts/figma_capture.py extract <src> [--stdout | --out PATH]
 ```
 
-Without an output option, it validates the source and writes `<basename>.svg` next to it. Use `--out PATH` for an explicit destination or `--stdout` to emit the standalone SVG without writing a file.
+Without an output option, it validates the source and writes `<basename>.svg` next to it. Use `--out PATH` for an explicit destination or `--stdout` to emit the standalone SVG without writing a file. The extractor also normalizes `rgba()` and `transparent` presentation attributes for PowerPoint and other strict SVG 1.1 importers before it XML-verifies the result.
 
 When running scripts isn't possible, use this manual fallback:
 
@@ -50,8 +50,14 @@ When running scripts isn't possible, use this manual fallback:
      ```
      Escaping the ampersands as `&amp;` is required for the standalone file to be well-formed XML.
      If the SVG already contains a `<defs>` block, **merge** the `<style>` into it (don't add a second `<defs>`).
-4. Prepend `<?xml version="1.0" encoding="UTF-8"?>\n` so the file is well-formed XML.
-5. Write to `<basename>.svg` next to the source (e.g. `example-architecture.html` → `example-architecture.svg`). Honour an explicit output path if the user provides one.
+4. Normalize only `fill` and `stroke` presentation attributes for strict SVG 1.1 consumers:
+   - Convert `transparent` to `none`, case-insensitively.
+   - Convert `rgba(r,g,b,a)` to lowercase `#rrggbb` plus the matching `fill-opacity` or `stroke-opacity`. Accept optional whitespace and alpha forms such as `.03`.
+   - If the matching opacity attribute already exists, multiply it by the alpha value. Reject duplicate attributes and any nonnumeric, non-finite, or out-of-range channel/opacity instead of guessing.
+   - Do not rewrite CSS. If `rgba()` or `transparent` remains in a `style="..."` attribute or `<style>` block, fail and move that color to a `fill`/`stroke` presentation attribute first.
+   - The transform must be idempotent: normalizing an already-normalized SVG produces the same attributes.
+5. Prepend `<?xml version="1.0" encoding="UTF-8"?>\n`, then parse the complete result as XML before writing anything. A parse failure is an export failure, not a warning.
+6. Write to `<basename>.svg` next to the source (e.g. `example-architecture.html` → `example-architecture.svg`). Honour an explicit output path if the user provides one.
 
 ### Caveat to surface to the user
 

@@ -105,7 +105,7 @@
       "slug": "polar",
       "source": "skills/diagram-design/assets/example-polar.html",
       "screenshot": "docs/screenshots/polar.png",
-      "source_sha256": "596e2042f18044ef1fa2c2eb849f39fa5c7767b2a17e272617ebd27e10bc86b1",
+      "source_sha256": "4e4fb12761b8f2854716e8fd81f4a5069a16bcc94eebe1953c6bd49ced044396",
       "screenshot_sha256": "a1dd1d4cb38db2217759c5d256cc56d832acc4f3077f090cc8691d6e4f82ef31",
       "width": 2400,
       "height": 1202
@@ -222,7 +222,7 @@
       "slug": "high-level",
       "source": "skills/diagram-design/assets/example-high-level.html",
       "screenshot": "docs/screenshots/high-level.png",
-      "source_sha256": "33789942cb06be5228ffa6e450602d1f7c9344b7d263fa2674b7ba5e6dd7e788",
+      "source_sha256": "502cbc68c56fdb83c6cf5f4b90dd7483af16f56acfdcc67e540067e45140dbbd",
       "screenshot_sha256": "afe822249fbbb601657edc468d5572d2c4a6acc8cbef4ea41771d42d13e3b75e",
       "width": 2400,
       "height": 1298

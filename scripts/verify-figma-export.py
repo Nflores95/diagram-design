@@ -243,7 +243,10 @@ def case_verbatim_source(runner: CaptureRunner, tmp: Path) -> None:
     path_match = re.search(r'<path\b[^>]*\bd="([^"]{24,})"', source_svg, re.IGNORECASE)
     require(text_match is not None, "could not select a source text label")
     require(path_match is not None, "could not select a source path fragment")
-    snippets = (text_match.group(0), f'd="{path_match.group(1)[:80]}')
+    snippets = (
+        f">{text_match.group(0).split('>', 1)[1]}",
+        f'd="{path_match.group(1)[:80]}',
+    )
 
     proc = runner.run("extract", source, "--stdout")
     require_success(proc, "verbatim-source extract")
@@ -319,6 +322,123 @@ def case_export_spec_parity(runner: CaptureRunner, tmp: Path) -> None:
     )
 
 
+def case_color_normalization(runner: CaptureRunner, tmp: Path) -> None:
+    colors = tmp / "colors"
+    colors.mkdir()
+    source = colors / "positive.html"
+    write_svg_case(
+        source,
+        '<rect id="fill" fill = " RGBA(45, 49, 66, .03) "/>'
+        "<path id='stroke' stroke='rgba(255,0,16,0.5)' stroke-opacity = '.4'/>"
+        '<circle id="transparent" fill="TrAnSpArEnT" stroke=" transparent "/>'
+        '<rect id="zero" fill="rgba(0,0,0,1)" fill-opacity="0"/>'
+        "<style>/* rgba(1,2,3,.5) and transparent in comments are inert */</style>",
+    )
+    proc = runner.run("extract", source, "--stdout")
+    require_success(proc, "presentation-color normalization")
+    output = proc.stdout
+    try:
+        root = ET.fromstring(output)
+    except ET.ParseError as exc:
+        raise VerificationError(f"normalized colors are not XML-clean: {exc}") from exc
+    elements = {
+        element.attrib["id"]: element
+        for element in root.iter()
+        if "id" in element.attrib
+    }
+    require(
+        elements["fill"].attrib.get("fill") == "#2d3142"
+        and elements["fill"].attrib.get("fill-opacity") == "0.03",
+        "rgba fill did not become lowercase hex plus alpha opacity",
+    )
+    require(
+        elements["stroke"].attrib.get("stroke") == "#ff0010"
+        and elements["stroke"].attrib.get("stroke-opacity") == "0.2",
+        "rgba stroke did not compose with existing stroke-opacity",
+    )
+    require(
+        elements["transparent"].attrib.get("fill") == "none"
+        and elements["transparent"].attrib.get("stroke") == "none",
+        "case-insensitive transparent did not become none",
+    )
+    require(
+        elements["zero"].attrib.get("fill-opacity") == "0",
+        "zero existing opacity did not compose correctly",
+    )
+    for element in root.iter():
+        for attribute in ("fill", "stroke"):
+            value = element.attrib.get(attribute, "")
+            require(
+                re.search(r"(?i)rgba\s*\(|\btransparent\b", value) is None,
+                f"unsupported {attribute} color survived normalization: {value!r}",
+            )
+
+    normalized = colors / "normalized.svg"
+    normalized.write_text(output, encoding="utf-8")
+    repeated = runner.run("extract", normalized, "--stdout")
+    require_success(repeated, "idempotent normalized extract")
+    require(repeated.stdout == output, "normalization changed an already-normalized SVG")
+
+    invalid_cases = (
+        ("negative-rgb", '<rect fill="rgba(-1,0,0,.5)"/>', "RGB channels"),
+        ("high-rgb", '<rect stroke="rgba(0,256,0,.5)"/>', "RGB channels"),
+        ("high-alpha", '<rect fill="rgba(0,0,0,1.1)"/>', "between 0 and 1"),
+        (
+            "nonfinite-alpha",
+            '<rect fill="rgba(0,0,0,NaN)"/>',
+            "unsupported fill color",
+        ),
+        (
+            "duplicate-fill",
+            '<rect fill="rgba(0,0,0,.5)" fill="transparent"/>',
+            "duplicate fill",
+        ),
+        (
+            "duplicate-opacity",
+            '<rect fill="rgba(0,0,0,.5)" fill-opacity=".5" fill-opacity=".4"/>',
+            "duplicate fill-opacity",
+        ),
+        (
+            "nonnumeric-opacity",
+            '<rect fill="#000" fill-opacity="opaque"/>',
+            "numeric value",
+        ),
+        (
+            "nonfinite-opacity",
+            '<rect fill="#000" fill-opacity="inf"/>',
+            "must be finite",
+        ),
+        (
+            "negative-opacity",
+            '<rect fill="#000" fill-opacity="-.1"/>',
+            "between 0 and 1",
+        ),
+        (
+            "unsupported-rgba",
+            '<rect fill="rgba(0 0 0 / .5)"/>',
+            "unsupported fill color",
+        ),
+        (
+            "inline-css",
+            '<rect style="fill: rgba(0,0,0,.5)"/>',
+            "unsupported rgba() color in style attribute",
+        ),
+        (
+            "style-block",
+            '<style>.hidden { stroke: transparent; }</style><path class="hidden"/>',
+            "unsupported transparent color in <style>",
+        ),
+    )
+    for name, body, cause in invalid_cases:
+        invalid = colors / f"{name}.html"
+        output_path = colors / f"{name}.svg"
+        write_svg_case(invalid, body)
+        failed = runner.run("extract", invalid, "--out", str(output_path))
+        require(failed.returncode == 2, f"{name} unexpectedly passed")
+        require(cause in failed.stderr, f"{name} did not identify {cause!r}")
+        require(not output_path.exists(), f"{name} wrote output before validation")
+
+
 def case_nested_svg(runner: CaptureRunner, tmp: Path) -> None:
     del tmp
     source_svg = isolate_svg(FIXTURE)
@@ -334,6 +454,26 @@ def case_nested_svg(runner: CaptureRunner, tmp: Path) -> None:
         ET.fromstring(proc.stdout)
     except ET.ParseError as exc:
         raise VerificationError(f"nested-SVG extract is not well-formed XML: {exc}") from exc
+
+
+def case_example_corpus(runner: CaptureRunner, tmp: Path) -> None:
+    del tmp
+    sources = sorted((ROOT / "skills/diagram-design/assets").glob("example-*.html"))
+    require(len(sources) >= 100, "example corpus discovery is unexpectedly incomplete")
+    for source in sources:
+        proc = runner.run("extract", source, "--stdout")
+        require_success(proc, f"{source.name} corpus extract")
+        try:
+            root = ET.fromstring(proc.stdout)
+        except ET.ParseError as exc:
+            raise VerificationError(f"{source.name} is not XML-clean: {exc}") from exc
+        for element in root.iter():
+            for attribute in ("fill", "stroke"):
+                value = element.attrib.get(attribute, "")
+                require(
+                    re.search(r"(?i)rgba\s*\(|\btransparent\b", value) is None,
+                    f"{source.name} retained unsupported {attribute}={value!r}",
+                )
 
 
 def raw_element(svg: str, tag: str) -> bytes:
@@ -551,7 +691,12 @@ def main() -> int:
         ("happy path across light/dark/full/terminal variants", case_happy_paths),
         ("extract preserves distinctive source SVG content verbatim", case_verbatim_source),
         ("extract stays in parity with export.md", case_export_spec_parity),
+        (
+            "PowerPoint-safe color normalization is strict and idempotent",
+            case_color_normalization,
+        ),
         ("nested SVG fixture survives complete and well-formed", case_nested_svg),
+        ("every shipped example extracts as normalized XML", case_example_corpus),
         ("accessibility metadata and title/desc survive byte-identically", case_accessibility),
         ("spaces and non-ASCII paths support default output", case_path_edge),
         ("invalid and active-content inputs fail without output", case_errors),

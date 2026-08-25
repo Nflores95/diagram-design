@@ -109,8 +109,8 @@ def main() -> int:
     check_fail(
         "hidden motion item",
         animated.replace(
-            '<g data-motion-item data-step="1"',
-            '<g style="opacity:0" data-motion-item data-step="1"',
+            '<g data-motion-item="true" data-step="1"',
+            '<g style="opacity:0" data-motion-item="true" data-step="1"',
             1,
         ),
         "hidden in source",

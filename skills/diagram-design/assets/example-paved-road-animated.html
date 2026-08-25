@@ -216,7 +216,7 @@
         <text x="76" y="357" fill="#eb6c36" font-family="'Geist', sans-serif" font-size="14" font-weight="600">Unauthorized Attacker</text>
         <text x="76" y="377" fill="#eb6c36" font-family="'Geist Mono', monospace" font-size="11">Bypass Attempt (No Key)</text>
 
-        <!-- Base Layout: Trust Zone 2 - Corporate CI/CD & Governance -->
+        <!-- Base Layout: Trust Zone 2 - Corporate CI/CD &amp; Governance -->
         <rect x="330" y="40" width="380" height="490" rx="8" fill="#ececec" stroke="rgba(45,49,66,0.12)" stroke-width="1" />
         <text x="350" y="72" fill="#4f5d75" font-family="'Geist Mono', monospace" font-size="11" letter-spacing="1.6">CORPORATE GOVERNANCE ZONE</text>
 
@@ -230,7 +230,7 @@
         <text x="370" y="238" fill="#2d3142" font-family="'Geist', sans-serif" font-size="14" font-weight="600">Privileged Security Gate</text>
         <text x="370" y="258" fill="#4f5d75" font-family="'Geist Mono', monospace" font-size="11">Policy: OPA Signature &amp; Vulnerability Scan</text>
 
-        <!-- Node: Boundary Firewall & WAF (Left side x=350..560) -->
+        <!-- Node: Boundary Firewall &amp; WAF (Left side x=350..560) -->
         <rect x="350" y="325" width="210" height="72" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.5" />
         <text x="366" y="355" fill="#eb6c36" font-family="'Geist', sans-serif" font-size="13" font-weight="600">Boundary Firewall &amp; WAF</text>
         <text x="366" y="375" fill="#eb6c36" font-family="'Geist Mono', monospace" font-size="10.5" font-weight="600">Status: × BLOCKED</text>
@@ -260,21 +260,21 @@
         <text x="800" y="485" fill="#4f5d75" font-family="'Geist Mono', monospace" font-size="11">Monitoring: Real-time Alerting Active</text>
 
         <!-- STEP 1: Authorized Developer Code Ingress -->
-        <g data-motion-item data-step="1" aria-label="Step 1: Developer workstation pushes signed code commit into CI/CD Paved Road pipeline">
+        <g data-motion-item="true" data-step="1" aria-label="Step 1: Developer workstation pushes signed code commit into CI/CD Paved Road pipeline">
           <path d="M 260 132 L 350 132" fill="none" stroke="#2d3142" stroke-width="2" marker-end="url(#arrow-ink)" />
           <rect x="275" y="104" width="60" height="18" rx="3" fill="#ffffff" stroke="#2d3142" stroke-width="1" />
           <text x="305" y="117" text-anchor="middle" fill="#2d3142" font-family="'Geist Mono', monospace" font-size="9" font-weight="600">GIT PUSH</text>
         </g>
 
-        <!-- STEP 2: CI/CD Build & Cryptographic Signing -->
-        <g data-motion-item data-step="2" aria-label="Step 2: CI/CD pipeline builds binary and generates cryptographic provenance signature">
+        <!-- STEP 2: CI/CD Build &amp; Cryptographic Signing -->
+        <g data-motion-item="true" data-step="2" aria-label="Step 2: CI/CD pipeline builds binary and generates cryptographic provenance signature">
           <path d="M 520 168 L 520 210" fill="none" stroke="#2d3142" stroke-width="2" marker-end="url(#arrow-ink)" />
           <rect x="440" y="178" width="160" height="20" rx="4" fill="#ffffff" stroke="#2d3142" stroke-width="1" />
           <text x="520" y="192" text-anchor="middle" fill="#2d3142" font-family="'Geist Mono', monospace" font-size="9" font-weight="600">PROVENANCE [SIGNED]</text>
         </g>
 
         <!-- STEP 3: Security Gate Approval → Production Gateway → Database Deployment -->
-        <g data-motion-item data-step="3" aria-label="Step 3: Security gate verifies OPA policy, approves artifact, and deploys via Production API Gateway to Isolated Core Database">
+        <g data-motion-item="true" data-step="3" aria-label="Step 3: Security gate verifies OPA policy, approves artifact, and deploys via Production API Gateway to Isolated Core Database">
           <!-- Gate ✓ PASS → Production API Gateway (diagonal: gate right edge to gateway left edge) -->
           <path d="M 690 230 L 780 132" fill="none" stroke="#2d3142" stroke-width="2" marker-end="url(#arrow-ink)" />
           <rect x="700" y="166" width="65" height="18" rx="3" fill="#ffffff" stroke="#2d3142" stroke-width="1" />
@@ -284,14 +284,14 @@
         </g>
 
         <!-- STEP 4: Unauthorized Bypass Attempt Blocked at Boundary Firewall -->
-        <g data-motion-item data-step="4" aria-label="Step 4: Unauthorized attacker connection attempt is blocked at trust boundary firewall">
+        <g data-motion-item="true" data-step="4" aria-label="Step 4: Unauthorized attacker connection attempt is blocked at trust boundary firewall">
           <path d="M 260 361 L 350 361" fill="none" stroke="#eb6c36" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow-accent)" />
           <rect x="272" y="345" width="65" height="18" rx="3" fill="#ffffff" stroke="#eb6c36" stroke-width="1" />
           <text x="304" y="358" text-anchor="middle" fill="#eb6c36" font-family="'Geist Mono', monospace" font-size="8.5" font-weight="600">BYPASS</text>
         </g>
 
-        <!-- STEP 5: Audit Log & SIEM Security Monitoring Record -->
-        <g data-motion-item data-step="5" aria-label="Step 5: Immutable SIEM audit log records both authorized deployment and blocked attack attempt">
+        <!-- STEP 5: Audit Log &amp; SIEM Security Monitoring Record -->
+        <g data-motion-item="true" data-step="5" aria-label="Step 5: Immutable SIEM audit log records both authorized deployment and blocked attack attempt">
           <!-- Gate Audit Trail (Runs cleanly down the right side x=620, clear of Firewall node x=350..560!) -->
           <path d="M 620 286 L 620 435" fill="none" stroke="#2d3142" stroke-width="2" marker-end="url(#arrow-ink)" />
           <!-- WAF Audit Trail (Runs directly down x=455 into Audit Log) -->
@@ -304,7 +304,7 @@
         </g>
 
         <!-- Precision SVG Legend Footer (Exact visual mini-arrows and mini-rects) -->
-        <g data-motion-decorative aria-hidden="true">
+        <g data-motion-decorative="true" aria-hidden="true">
           <!-- Flow Line 1: Authorized Paved Road -->
           <line x1="40" y1="584" x2="65" y2="584" stroke="#2d3142" stroke-width="2" marker-end="url(#arrow-ink)" />
           <text x="73" y="588" fill="#2d3142" font-family="'Geist Mono', monospace" font-size="9.5">Authorized Paved Road</text>

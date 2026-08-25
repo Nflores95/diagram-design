@@ -244,9 +244,9 @@
         <text x="360" y="182" fill="#2d3142" font-family="'Geist', sans-serif" font-size="14" font-weight="600">Central Ingress Queue Buffer</text>
         <text x="360" y="200" fill="#4f5d75" font-family="'Geist Mono', monospace" font-size="11">Capacity: 5 slots (Bounded FIFO)</text>
 
-        <!-- STEP 1: Ingress Traffic Arrives (Slots 1 & 2 + Initial 2/5 Queue Depth Badge) -->
-        <g data-motion-item data-step="1" aria-label="Step 1: Web App and Mobile API send steady ingress traffic (7 req/sec total) into queue slots 1 and 2">
-          <!-- Ingress Flow Arrows 1 & 2 -->
+        <!-- STEP 1: Ingress Traffic Arrives (Slots 1 &amp; 2 + Initial 2/5 Queue Depth Badge) -->
+        <g data-motion-item="true" data-step="1" aria-label="Step 1: Web App and Mobile API send steady ingress traffic (7 req/sec total) into queue slots 1 and 2">
+          <!-- Ingress Flow Arrows 1 &amp; 2 -->
           <path d="M 260 132 L 340 234" fill="none" stroke="#2d3142" stroke-width="2" marker-end="url(#arrow-ink)" />
           <path d="M 260 232 L 340 282" fill="none" stroke="#2d3142" stroke-width="2" marker-end="url(#arrow-ink)" />
 
@@ -267,8 +267,8 @@
         </g>
 
         <!-- STEP 2: Ingress Spike Fills Queue (Slots 3, 4, 5 + Updated 5/5 Full Warn Queue Depth Badge) -->
-        <g data-motion-item data-step="2" aria-label="Step 2: Payment and ERP traffic spike (20 req/sec total) fills queue to 5/5 slots capacity">
-          <!-- Ingress Flow Arrows 3 & 4 -->
+        <g data-motion-item="true" data-step="2" aria-label="Step 2: Payment and ERP traffic spike (20 req/sec total) fills queue to 5/5 slots capacity">
+          <!-- Ingress Flow Arrows 3 &amp; 4 -->
           <path d="M 260 332 L 340 322" fill="none" stroke="#eb6c36" stroke-width="2" marker-end="url(#arrow-accent)" />
           <path d="M 260 432 L 340 370" fill="none" stroke="#eb6c36" stroke-width="2" marker-end="url(#arrow-accent)" />
 
@@ -292,7 +292,7 @@
         </g>
 
         <!-- STEP 3: Rate Limiter Diverts Excess Traffic (429 Dropped Sink) -->
-        <g data-motion-item data-step="3" aria-label="Step 3: Overflow backpressure activates, shedding excess 19 req/sec to 429 Rate Limiter sink">
+        <g data-motion-item="true" data-step="3" aria-label="Step 3: Overflow backpressure activates, shedding excess 19 req/sec to 429 Rate Limiter sink">
           <!-- Overflow Diverter Connector -->
           <path d="M 525 150 L 525 92 L 760 92" fill="none" stroke="#eb6c36" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arrow-accent)" />
           
@@ -302,8 +302,8 @@
           <text x="780" y="104" fill="#4f5d75" font-family="'Geist Mono', monospace" font-size="11">Status: 429 Backpressure (19 req/sec Shed)</text>
         </g>
 
-        <!-- STEP 4: Worker Service Processing & Downstream Output -->
-        <g data-motion-item data-step="4" aria-label="Step 4: Constrained worker node processes queue at 8 req/sec max emitting 200 OK downstream responses">
+        <!-- STEP 4: Worker Service Processing &amp; Downstream Output -->
+        <g data-motion-item="true" data-step="4" aria-label="Step 4: Constrained worker node processes queue at 8 req/sec max emitting 200 OK downstream responses">
           <!-- Worker Processing Connector -->
           <path d="M 710 310 L 760 280" fill="none" stroke="#2d3142" stroke-width="2" marker-end="url(#arrow-ink)" />
 
@@ -323,15 +323,15 @@
           <text x="780" y="464" fill="#4f5d75" font-family="'Geist Mono', monospace" font-size="11">Result: 200 OK Admitted Traffic Stream (8 req/sec)</text>
         </g>
 
-        <!-- STEP 5: Equilibrium State & Performance Metrics Summary -->
-        <g data-motion-item data-step="5" aria-label="Step 5: System reaches controlled equilibrium protecting worker from overload while shedding excess traffic">
+        <!-- STEP 5: Equilibrium State &amp; Performance Metrics Summary -->
+        <g data-motion-item="true" data-step="5" aria-label="Step 5: System reaches controlled equilibrium protecting worker from overload while shedding excess traffic">
           <rect x="340" y="490" width="370" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1.5" />
           <text x="360" y="516" fill="#2d3142" font-family="'Geist', sans-serif" font-size="13" font-weight="600">System State: Controlled Equilibrium</text>
           <text x="360" y="536" fill="#4f5d75" font-family="'Geist Mono', monospace" font-size="11">Worker Protected · Backpressure Active</text>
         </g>
 
         <!-- Precision SVG Legend Footer (Exact visual mini-arrows and mini-rects) -->
-        <g data-motion-decorative aria-hidden="true">
+        <g data-motion-decorative="true" aria-hidden="true">
           <!-- Flow Line 1: Admitted Flow -->
           <line x1="40" y1="584" x2="65" y2="584" stroke="#2d3142" stroke-width="2" marker-end="url(#arrow-ink)" />
           <text x="73" y="588" fill="#2d3142" font-family="'Geist Mono', monospace" font-size="9.5">Admitted Flow</text>
