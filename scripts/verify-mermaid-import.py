@@ -8,8 +8,11 @@ command wiring. Exit 0 only when every gate passes.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -38,6 +41,10 @@ def ok(message: str) -> None:
     print(f"OK: {message}")
 
 
+def normalize_newlines(text: str) -> str:
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def invoke(args: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(EXTRACT), *args],
@@ -56,6 +63,67 @@ def run_extract(args: list[str]) -> str:
             f"{process.stderr.strip()}"
         )
     return process.stdout
+
+
+def check_legacy_stdout_encoding(tmp: Path) -> None:
+    source = tmp / "unicode-stdout.mmd"
+    source.write_text(
+        'flowchart TD\nA["登录<br/>続行 ⇒"] --> B["résumé"]\n',
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "cp1252"
+    env["PYTHONUTF8"] = "0"
+    process = subprocess.run(
+        [sys.executable, str(EXTRACT), str(source)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+    if process.returncode != 0:
+        fail(
+            "Mermaid extractor failed with legacy stdout encoding: "
+            + process.stderr.decode("utf-8", errors="replace").strip()
+        )
+    try:
+        output = process.stdout.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        fail(f"Mermaid extractor did not emit UTF-8 stdout: {error}")
+    for needle in ("登录", "続行 ⇒", "résumé", "⏎"):
+        if needle not in output:
+            fail(f"UTF-8 Mermaid digest lost {needle!r}: {output!r}")
+    if "�" in output:
+        fail("UTF-8 Mermaid digest contains a replacement character")
+    destination = tmp / "unicode-stdout.md"
+    file_process = subprocess.run(
+        [sys.executable, str(EXTRACT), str(source), "--out", str(destination)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+    if file_process.returncode != 0:
+        fail("Mermaid --out failed under a legacy Windows encoding")
+    file_output = destination.read_text(encoding="utf-8")
+    if normalize_newlines(file_output) != normalize_newlines(output):
+        fail("Mermaid --out no longer matches its UTF-8 stdout digest")
+
+    class CallerOwnedStdout(io.StringIO):
+        def __init__(self) -> None:
+            super().__init__()
+            self.reconfigured = False
+
+        def reconfigure(self, **_kwargs: object) -> None:
+            self.reconfigured = True
+
+    caller_stdout = CallerOwnedStdout()
+    extractor = load_extractor_module()
+    with contextlib.redirect_stdout(caller_stdout):
+        result = extractor.main([str(source)])
+    if result != 0 or caller_stdout.reconfigured:
+        fail("imported Mermaid main() reconfigured its caller-owned stdout")
+    if "登录" not in caller_stdout.getvalue():
+        fail("imported Mermaid main() did not write to its caller-owned stdout")
+    ok("Mermaid stdout stays lossless UTF-8 under a legacy Windows encoding")
 
 
 def expect_error(args: list[str], message: str) -> None:
@@ -216,6 +284,11 @@ B--no-->A
 C-.fast.->D
 D==crit==>E
 E--tie---A
+K<--both-->L
+M o--circle--o N
+O x--blocked--x P
+Box--yes-->C
+Echo--go-->D
 F --o G --> H
 I----->J
 """,
@@ -223,18 +296,80 @@ I----->J
     )
     compact = json.loads(run_extract([str(compact_file), "--json"]))["diagrams"][0]
     compact_ids = sorted(node["id"] for node in compact["nodes"])
-    if compact_ids != ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]:
+    if compact_ids != [
+        "A", "B", "Box", "C", "D", "E", "Echo", "F", "G", "H", "I", "J",
+        "K", "L", "M", "N", "O", "P",
+    ]:
         fail(f"compact edge labels materialized phantom nodes: {compact_ids}")
     compact_labels = [edge["label"] for edge in compact["edges"]]
-    if compact_labels[:6] != ["", "yes", "no", "fast", "crit", "tie"]:
+    if compact_labels[:11] != [
+        "", "yes", "no", "fast", "crit", "tie", "both", "circle", "blocked",
+        "yes", "go",
+    ]:
         fail(f"compact edge labels were not retained: {compact_labels}")
-    if compact_labels[6:] != ["", "", ""]:
+    if compact_labels[11:] != ["", "", ""]:
         fail(
             "operator characters or chained links were misread as compact "
             f"labels: {compact_labels}"
         )
     if compact["edges"][3]["style"] != "dashed" or compact["edges"][4]["style"] != "thick":
         fail("compact dotted/thick labeled links lost their styles")
+    arrow_bidir, circle_bidir, cross_bidir = compact["edges"][6:9]
+    if not arrow_bidir["bidirectional"] or arrow_bidir["arrowhead"] != "arrow":
+        fail("compact labeled `<-- -->` link lost bidirectional arrow semantics")
+    if not circle_bidir["bidirectional"] or circle_bidir["arrowhead"] != "circle":
+        fail("compact labeled `o-- --o` link lost bidirectional circle semantics")
+    if not cross_bidir["bidirectional"] or cross_bidir["arrowhead"] != "cross":
+        fail("compact labeled `x-- --x` link lost bidirectional cross semantics")
+    if compact["edges"][9]["source"] != "Box" or compact["edges"][10]["source"] != "Echo":
+        fail("source IDs ending in x/o were consumed as left edge markers")
+
+    single_marker_source_file = tmp / "single-marker-source-links.mmd"
+    single_marker_source_file.write_text(
+        """flowchart LR
+x--yes-->B
+o--go-->C
+""",
+        encoding="utf-8",
+    )
+    single_marker_source = json.loads(
+        run_extract([str(single_marker_source_file), "--json"])
+    )["diagrams"][0]
+    single_marker_edges = [
+        (edge["source"], edge["target"], edge["label"])
+        for edge in single_marker_source["edges"]
+    ]
+    if single_marker_edges != [
+        ("x", "B", "yes"),
+        ("o", "C", "go"),
+    ]:
+        fail("single-character x/o source IDs were consumed as left edge markers")
+
+    chained_marker_source_file = tmp / "chained-marker-source-links.mmd"
+    chained_marker_source_file.write_text(
+        """flowchart LR
+A--yes-->x--go-->B
+C--no--> o--wait-->D
+E-->|maybe|x--next-->F
+""",
+        encoding="utf-8",
+    )
+    chained_marker_source = json.loads(
+        run_extract([str(chained_marker_source_file), "--json"])
+    )["diagrams"][0]
+    chained_marker_edges = [
+        (edge["source"], edge["target"], edge["label"])
+        for edge in chained_marker_source["edges"]
+    ]
+    if chained_marker_edges != [
+        ("A", "x", "yes"),
+        ("x", "B", "go"),
+        ("C", "o", "no"),
+        ("o", "D", "wait"),
+        ("E", "x", "maybe"),
+        ("x", "F", "next"),
+    ]:
+        fail("chained x/o endpoint IDs were consumed as left edge markers")
 
     modern_file = tmp / "modern-flowchart.mmd"
     modern_file.write_text(
@@ -708,6 +843,7 @@ def main() -> int:
         check_shape_and_edge_vocabulary(tmp)
         check_frontmatter(tmp)
         check_markdown_and_grammars(tmp)
+        check_legacy_stdout_encoding(tmp)
         check_sequence_grammar_forms(tmp)
         check_adversarial(tmp)
         check_errors_and_limits(tmp)

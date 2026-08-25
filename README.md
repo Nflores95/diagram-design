@@ -14,7 +14,7 @@
 
 *New in 2.5.10: ten more layout grammars — Sankey, fishbone, Wardley map, kanban, user journey, deployment, dependency graph, UML class, story map, and database schema.*
 
-38 editorial diagram types for Claude Code, Codex, and Pi. Self-contained HTML + SVG. No shadows. No Mermaid slop. Semantic patterns describe behavior separately from layout, so a queue, policy trace, or trust boundary can use the nearest existing type without expanding the type count. Static HTML remains the default; optional motion is available for ordered explanations. The skill also redraws draw.io or Mermaid sources at a chosen format, size, and detail level.
+39 editorial diagram types for Claude Code, Codex, Factory Droid, and Pi. Self-contained HTML + SVG. No shadows. No Mermaid slop. Semantic patterns describe behavior separately from layout, so a queue, policy trace, or trust boundary can use the nearest existing type without expanding the type count. Static HTML remains the default; optional motion is available for ordered explanations. The skill also redraws draw.io or Mermaid sources at a chosen format, size, and detail level.
 
 No Figma. No generic rounded boxes. No 30-minute color-picking sessions.
 
@@ -24,7 +24,7 @@ No Figma. No generic rounded boxes. No 30-minute color-picking sessions.
 
 I write at [littlemight.com](https://littlemight.com?utm_source=diagram-design&utm_medium=readme&utm_campaign=github&utm_content=intro) (and run [BestSelf.co](https://bestself.co?utm_source=diagram-design&utm_medium=readme&utm_campaign=github&utm_content=intro) on the side). Every time I needed a diagram — an architecture sketch, a flowchart, a pyramid of what matters most — I'd ask Claude and get back a generic rounded-box thing that looked nothing like the rest of the site. I'd either fight with Figma for 30 minutes or just skip the diagram.
 
-So I built a Claude Code skill for it. Thirty-eight visual types, editorial quality, matches your brand in 60 seconds by reading your website.
+So I built a Claude Code skill for it. Thirty-nine visual types, editorial quality, matches your brand in 60 seconds by reading your website.
 
 > *The highest-quality move is usually deletion.* Every node earns its place. The accent color is reserved for the 1–2 things the reader should look at first. Target density: 4/10.
 
@@ -32,7 +32,7 @@ So I built a Claude Code skill for it. Thirty-eight visual types, editorial qual
 
 ## What it makes
 
-All 38 visual types ship in three static variants: minimal light, minimal dark, and full-editorial. Open any of them directly in a browser. There is no build step, JavaScript, or external image dependency.
+All 39 visual types ship in three static variants: minimal light, minimal dark, and full-editorial. Open any of them directly in a browser. There is no build step, JavaScript, or external image dependency.
 
 <table>
 <tr>
@@ -98,13 +98,13 @@ All 38 visual types ship in three static variants: minimal light, minimal dark, 
 <tr>
   <td align="center"><img src="docs/screenshots/story-map.png" alt="Story map"><br><b>Story map</b><br><sub>Backbone × release slices</sub></td>
   <td align="center"><img src="docs/screenshots/db-schema.png" alt="Database schema"><br><b>Database schema</b><br><sub>Physical tables + column FKs</sub></td>
-  <td></td>
+  <td align="center"><img src="docs/screenshots/polar.png" alt="Polar chart"><br><b>Polar chart</b><br><sub>Cyclic magnitude · linear radius</sub></td>
 </tr>
 </table>
 
 The v2.5.10 release added the final ten types above. Compare their light, dark, and full-editorial variants in the [30-variant contact sheet](.github/pr-previews/editorial-diagrams-2.5.10.jpg).
 
-**Browse the live gallery:** [cathrynlavery.github.io/diagram-design](https://cathrynlavery.github.io/diagram-design/) — or open [`skills/diagram-design/assets/index.html`](skills/diagram-design/assets/index.html) locally to flip through all 38 diagrams with light / dark / full-editorial tabs.
+**Browse the live gallery:** [cathrynlavery.github.io/diagram-design](https://cathrynlavery.github.io/diagram-design/) — or open [`skills/diagram-design/assets/index.html`](skills/diagram-design/assets/index.html) locally to flip through all 39 diagrams with light / dark / full-editorial tabs.
 
 ---
 
@@ -128,6 +128,15 @@ codex plugin add diagram-design@diagram-design
 
 Codex refreshes configured Git marketplaces at startup. To fetch immediately, run `codex plugin marketplace upgrade diagram-design` and start a new session.
 
+**Factory Droid:**
+
+```bash
+droid plugin marketplace add https://github.com/cathrynlavery/diagram-design
+droid plugin install diagram-design@diagram-design --scope user
+```
+
+Droid tracks Git plugins by commit rather than the manifest's display version. To fetch a merged update, run `droid plugin marketplace update diagram-design`, then `droid plugin update diagram-design@diagram-design --scope user`, and start a new session.
+
 **Claude Cowork (organization marketplace):** Organization GitHub marketplaces currently require a private or internal repository, so first mirror this public repository into one owned by your organization. In **Organization settings → Plugins**, choose **Add plugin → GitHub**, connect that mirror, and enable **Sync automatically** from the marketplace menu. Automatic sync runs when a pull request containing a plugin version bump is merged to the mirror's default branch; direct pushes do not trigger the webhook. Install Diagram Design from the resulting organization marketplace.
 
 **Pi:**
@@ -136,7 +145,7 @@ Codex refreshes configured Git marketplaces at startup. To fetch immediately, ru
 pi install https://github.com/cathrynlavery/diagram-design
 ```
 
-Run `/reload` in an open Pi session. Pi makes the skill available for matching diagram requests; use `/skill:diagram-design` to invoke it explicitly. Pi also loads the `/export-diagram`, `/import-mermaid`, and `/profile` prompt templates. The unpinned Git install is intentional: Pi has no automatic package refresh, so run `pi update --extensions` to pull merged updates.
+Run `/reload` in an open Pi session. Pi makes the skill available for matching diagram requests; use `/skill:diagram-design` to invoke it explicitly. Pi also loads the `/export-diagram`, `/import-mermaid`, `/profile`, and `/doctor` prompt templates. The unpinned Git install is intentional: Pi has no automatic package refresh, so run `pi update --extensions` to pull merged updates.
 
 > **One-time migration:** an existing standalone `npx skills add` copy will not start following the Codex marketplace automatically. Remove that standalone copy, then use the Codex marketplace commands above. Likewise, uninstall a personal Cowork copy and reinstall Diagram Design from your organization's marketplace. Future marketplace version bumps then flow through each client's native update path.
 
@@ -154,7 +163,7 @@ pi install ~/code/diagram-design
 ln -s ~/code/diagram-design/skills/diagram-design ~/.claude/skills/diagram-design
 ```
 
-The shared skill lives at `skills/diagram-design/`. Pi discovers it through the repo's standard `skills/` package directory; Claude Code, Codex, and other Agent Skills-compatible tools use the same files.
+The shared skill lives at `skills/diagram-design/`. Pi discovers it through the repo's standard `skills/` package directory; Claude Code, Codex, Factory Droid, and other Agent Skills-compatible tools use the same files.
 
 ---
 
@@ -204,7 +213,7 @@ Every diagram template gives the inline SVG an accessible name and description: 
 
 ### Manual override
 
-Prefer to set tokens by hand? Open [`skills/diagram-design/references/style-guide.md`](skills/diagram-design/references/style-guide.md) and edit the table. Everything downstream reads from there — all 38 diagrams, the annotation primitive, and the gallery all inherit semantic role names (`accent`, not `#eb6c36`).
+Prefer to set tokens by hand? Open [`skills/diagram-design/references/style-guide.md`](skills/diagram-design/references/style-guide.md) and edit the table. Everything downstream reads from there — all 39 diagrams, the annotation primitive, and the gallery all inherit semantic role names (`accent`, not `#eb6c36`).
 
 ### First-run gate
 
@@ -218,18 +227,18 @@ See [`skills/diagram-design/references/onboarding.md`](skills/diagram-design/ref
 
 Onboard a brand once, save the result as a named profile, then add a `.diagram-design` marker containing `profile: <slug>` to each client project. Marker projects read `~/.diagram-design/profiles/<slug>.md` directly, so parallel workspaces can use different brands without overwriting a shared installed `style-guide.md`.
 
-The profile library is shared across Claude Code, Codex, and Pi. Use `/diagram-design:profile` in Claude Code, `/profile` in Pi, or ask in natural language in any host. See [`profiles.md`](skills/diagram-design/references/profiles.md) for the storage, marker, and recovery contract.
+The profile library is shared across Claude Code, Codex, Factory Droid, and Pi. Use `/diagram-design:profile` in Claude Code, `/profile` in Factory Droid or Pi, or ask in natural language in any host. See [`profiles.md`](skills/diagram-design/references/profiles.md) for the storage, marker, and recovery contract.
 
 ---
 
 ## Quickstart
 
 ```bash
-# From a cloned checkout, open the gallery to see all 38 diagrams
+# From a cloned checkout, open the gallery to see all 39 diagrams
 open skills/diagram-design/assets/index.html       # macOS
 xdg-open skills/diagram-design/assets/index.html  # Linux
 
-# In Claude Code, Codex, or Pi, ask:
+# In Claude Code, Codex, Factory Droid, or Pi, ask:
 # "Make me an architecture diagram of my app: frontend, backend, database, Redis cache."
 # "I need a quadrant showing Q2 projects by impact vs effort."
 # "Give me a sequence of a bearer call with token refresh on 401."
@@ -343,15 +352,18 @@ diagram-design/
 ├── .agents/plugins/marketplace.json — Codex marketplace catalog
 ├── .claude-plugin/                  — Claude marketplace + plugin manifest
 ├── .codex-plugin/                   — Codex plugin manifest
+├── .factory-plugin/                 — Factory Droid marketplace + plugin manifest
 ├── commands/
-│   ├── export-diagram.md            — Claude Code export command
-│   ├── import-drawio.md             — Claude Code draw.io import command
-│   ├── import-mermaid.md            — Claude Code Mermaid import command
-│   └── profile.md                   — Claude Code client-profile command
+│   ├── export-diagram.md            — plugin export command
+│   ├── import-drawio.md             — plugin draw.io import command
+│   ├── import-mermaid.md            — plugin Mermaid import command
+│   ├── profile.md                   — plugin client-profile command
+│   └── doctor.md                    — plugin environment diagnostics command
 ├── prompts/
 │   ├── export-diagram.md            — Pi `/export-diagram` prompt template
 │   ├── import-mermaid.md            — Pi Mermaid import prompt template
-│   └── profile.md                   — Pi `/profile` prompt template
+│   ├── profile.md                   — Pi `/profile` prompt template
+│   └── doctor.md                    — Pi `/doctor` diagnostics prompt template
 ├── skills/
 │   └── diagram-design/
 │       ├── SKILL.md                 — philosophy, selection guide, checklist
@@ -399,7 +411,7 @@ diagram-design/
 │       └── assets/
 │           ├── index.html           — live gallery, tabbed
 │           ├── template*.html       — scaffolds for new diagrams
-│           ├── example-<type>.html  — 3 variants × 38 types
+│           ├── example-<type>.html  — 3 variants × 39 types
 │           ├── example-loop-terminal.html
 │           ├── example-quadrant-consultant.html
 │           ├── example-import-drawio.html
@@ -407,12 +419,19 @@ diagram-design/
 │           ├── example-policy-trace-animated.html
 │           └── example-sequence-oauth*.html
 ├── scripts/
-│   ├── bump-plugin-version.py       — synchronized Claude/Codex version bump
-│   ├── render-canonical-screenshots.py — deterministic 38-type PNG catalog renderer
+│   ├── bump-plugin-version.py       — synchronized Claude/Codex/Factory version bump
+│   ├── render-canonical-screenshots.py — deterministic 39-type PNG catalog renderer
 │   ├── verify-screenshot-freshness.py — source + screenshot digest gate
 │   ├── verify-plugin-package.py     — version + marketplace package gate
 │   ├── test-plugin-package.py       — adversarial package-gate tests
-│   ├── test-verify-docs-sync.py     — docs/profile-surface gate tests
+│   ├── lint-render.py               — Chromium rendered-layout checker
+│   ├── verify-doctor.py             — doctor diagnostics contract gate
+│   ├── test-verify-doctor.py        — doctor diagnostics adversarial tests
+│   ├── verify-polar.py              — quantitative polar encoding gate
+│   ├── test-verify-polar.py         — polar gate adversarial tests
+│   ├── verify-sankey.py             — Sankey conservation + geometry gate
+│   ├── test-verify-sankey.py        — Sankey gate adversarial tests
+│   ├── test-verify-docs-sync.py     — docs/routing-surface gate tests
 │   └── fixtures/
 │       ├── sample-flowchart.mmd
 │       ├── sample-readme-with-mermaid.md
@@ -439,9 +458,46 @@ behavior, resource caps, named failures, and reference/command wiring.
 
 Label placement is gated geometrically: `python3 scripts/verify-geometry.py --all` fails CI when a label mask overlaps a node declared later in the document, because the node fill would clip the text at render time. `python3 scripts/test-verify-geometry.py` keeps that checker honest in both directions.
 Treemaps get a second geometric gate, because their whole claim is that area *is* the encoding: `python3 scripts/verify-treemap.py --all` fails CI when a cell's share of the drawn area doesn't match the value printed inside it, or when a label overruns the cell it names. It measures area error as a *relative* figure — an absolute one passes exactly the small cells most likely to be wrong. `python3 scripts/test-verify-treemap.py` keeps it honest in both directions.
-Docs and routing surfaces are themselves gated: `python3 scripts/verify-docs-sync.py` fails CI if the SKILL.md description loses a type's lexical hook, the gallery can't reach a shipped example, the README tree names a file that doesn't exist, a relative `references/*.md` link in SKILL.md is broken, or the Claude/Pi profile surfaces drift from `profiles.md`. `python3 scripts/test-verify-docs-sync.py` exercises those newer checks adversarially. The skill also ships `skills/diagram-design/scripts/self_check.py` — a distilled output checker installed agents can run on their own generated diagrams; `python3 scripts/test-self-check.py` keeps it honest. Settled design decisions (why one pinned controller, why patterns never add types, the autoplay policy, the SKILL.md byte cap, why label placement is verified geometrically, and why client profiles use marker-first resolution) live as short ADRs in `docs/adr/` — read them before relitigating one, add one when you settle a new policy.
+Docs and routing surfaces are themselves gated: `python3 scripts/verify-docs-sync.py` fails CI if the SKILL.md description loses a type's lexical hook, the gallery can't reach a shipped example, the README tree names a file that doesn't exist, a relative reference link is broken, a scanner-visible support path is not shipped inside the skill package, or any command/prompt surface drifts from its routed reference. `python3 scripts/test-verify-docs-sync.py` exercises those newer checks adversarially, including the strict-bundler behavior used by Hermes Agent. The skill also ships `skills/diagram-design/scripts/self_check.py` — a distilled output checker installed agents can run on their own generated diagrams; `python3 scripts/test-self-check.py` keeps it honest. Settled design decisions (why one pinned controller, why patterns never add types, the autoplay policy, the SKILL.md byte cap, why label placement is verified geometrically, and why client profiles use marker-first resolution) live as short ADRs in `docs/adr/` — read them before relitigating one, add one when you settle a new policy.
 
 All pull requests and pushes are automatically validated across Linux, Windows, and macOS runners via GitHub Actions CI (`.github/workflows/ci.yml`).
+
+`lint-skin.py` reads the source. `lint-render.py` renders it — headless Chromium
+reports what actually got painted, which catches content cut off by the SVG
+viewport, collapsed SVGs, horizontal page overflow, missing local assets and JS
+errors. Both run in CI on every pull request.
+
+```bash
+pip install playwright && playwright install chromium   # same dep as PNG export
+python3 scripts/lint-render.py --self-test              # checks the checks
+python3 scripts/lint-render.py --all                   # examples and templates
+python3 scripts/lint-render.py <your-new-example.html>
+python3 scripts/lint-render.py --fonts --all           # measure with the real webfonts
+```
+
+Clipping is measured by paint, not geometry: `getBoundingClientRect()` on an SVG
+child ignores stroke width, markers and filter bleed, and knows nothing about
+`clip-path` or `overflow: visible`, so it both misses real clipping and invents
+clipping that isn't there. Instead each SVG is screenshot as authored and again
+with its `overflow` released, and the two are diffed — ink that appears outside
+was being cut off. Releases are staged — the SVG alone, then each clipping
+ancestor — so a wrapper release can't mask spill at the SVG's own edge, and an SVG
+authored `overflow: visible` inside a clipping wrapper is still checked.
+`--self-test` asserts all of that on 23 cases, over half of them cases that must
+*not* be flagged, and it also asserts the DOM is byte-identical after measuring.
+
+No golden images, so there is nothing to re-record and no PNGs in the repo.
+Network is cut at the browser's resolver, which covers WebSockets and anything
+else that bypasses request routing, with request routing as a second layer;
+`--fonts` excludes exactly the two Google Fonts hostnames and allows them only
+over HTTPS. Since the oracle is pixels, CI pins Playwright and its Chromium build
+rather than installing whatever is newest.
+
+**Font metrics differ between the default run and `--fonts`.** With network
+blocked — the default, and what CI runs — text is laid out in the fallback faces,
+not Instrument Serif and Geist. That is deterministic and machine-independent,
+which is what a linter needs, but it is not what your reader sees. Run
+`--fonts --all` locally when you care whether real text fits its box.
 
 ### What loads when
 
@@ -460,7 +516,7 @@ At startup, the agent sees only the skill name and description. When a request m
 | "Give me a terminal / CLI-window version" | `SKILL.md` + `references/primitive-terminal.md` |
 | "Redraw this .drawio file for my deck" | `SKILL.md` + `references/import-drawio.md` + `references/output-spec.md` + the chosen type's reference |
 | "Redraw this Mermaid block for my deck" | `SKILL.md` + `references/import-mermaid.md` + `references/output-spec.md` + the chosen type's reference |
-| Routine static diagram-making (any of the 38 visual types) | Only `SKILL.md` + that one type's reference |
+| Routine static diagram-making (any of the 39 visual types) | Only `SKILL.md` + that one type's reference |
 
 No matter how many types exist, the agent only reads the one you need. Add a new type tomorrow and nothing else changes.
 
