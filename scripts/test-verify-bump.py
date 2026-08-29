@@ -451,6 +451,22 @@ def main() -> int:
         else:
             print("OK: scientific notation is parsed as numbers, not path commands")
 
+        # SVG's number grammar also permits a decimal point with no following
+        # fractional digits, including before an exponent marker.
+        trailing_decimal = source.replace(
+            FOCAL_D,
+            'd="M320.,88. L440.e0,144. L560.,256. L680.,368."',
+            1,
+        )
+        code, output = run(write(directory, "trailing-decimal.html", trailing_decimal))
+        if code != 0:
+            failures.append(
+                "trailing-decimal coordinates in a valid path were rejected: %s"
+                % output.strip()
+            )
+        else:
+            print("OK: trailing-decimal coordinates follow the SVG number grammar")
+
         # Restricting command recognition to SVG's real command alphabet must
         # not make unknown letters disappear from otherwise plausible data.
         case(

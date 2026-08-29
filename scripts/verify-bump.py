@@ -105,7 +105,10 @@ ATTR_RE = re.compile(
     re.DOTALL,
 )
 DECLARES_RANKS_RE = re.compile(r"\bdata-ranks\s*=", re.IGNORECASE)
-NUM_RE = re.compile(r"[-+]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][-+]?\d+)?")
+# Full SVG number grammar: the fractional digits after a decimal point are
+# optional when an integer part is present, so both `320.` and `320.e2` are
+# valid spellings of coordinates this verifier must measure.
+NUM_RE = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?")
 PATH_COMMAND_RE = re.compile(r"[AaCcHhLlMmQqSsTtVvZz]")
 RANK_LABEL_RE = re.compile(r"^#(\d+)$")
 
