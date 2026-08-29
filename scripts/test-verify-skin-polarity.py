@@ -51,6 +51,7 @@ PARSE_CLAIMS = NAMESPACE["parse_claims"]
 RESOLVE_PAPER = NAMESPACE["resolve_paper"]
 COMPOSITE = NAMESPACE["composite"]
 RELATIVE_LUMINANCE = NAMESPACE["relative_luminance"]
+PARSE_FILL = NAMESPACE["parse_fill"]
 
 # The five non-focal cells of the shipped treemaps, as (rank, light ink opacity,
 # dark ink opacity). The ramp is one set of numbers per skin; only the ink role
@@ -134,6 +135,82 @@ def main():
 
     with tempfile.TemporaryDirectory() as raw:
         directory = Path(raw)
+
+        # SVG accepts both quote styles. Convert every rank-bearing ramp member
+        # to single-quoted attributes; the checker must still discover all five
+        # members and verify the shipped claim.
+        single_quoted = light_source
+        quoted_edits = 0
+        for rank, alpha in LIGHT_RAMP:
+            anchor = 'data-share="{}" fill="rgba({},{})"'.format(
+                rank, LIGHT_INK, alpha
+            )
+            replacement = "data-share='{}' fill='rgba({},{})'".format(
+                rank, LIGHT_INK, alpha
+            )
+            if anchor in single_quoted:
+                single_quoted = single_quoted.replace(anchor, replacement, 1)
+                quoted_edits += 1
+        if quoted_edits != len(LIGHT_RAMP):
+            failures.append("could not build the single-quoted ramp fixture")
+        else:
+            code, output = run(write(directory, "single-quoted.html", single_quoted))
+        if quoted_edits == len(LIGHT_RAMP) and code != 0:
+            failures.append(
+                "single_quoted_ramp_attributes_pass: exit {} - {}".format(
+                    code, output.strip()
+                )
+            )
+        elif quoted_edits == len(LIGHT_RAMP):
+            print("OK: single_quoted_ramp_attributes_pass")
+
+        # CSS Color 4's space-separated channels, percentage channels, slash
+        # alpha, and alpha-bearing hex spellings are all browser-valid fills.
+        # Pin the numeric interpretation directly so merely accepting but
+        # mismeasuring a color cannot satisfy the test.
+        color_cases = (
+            ("#2d314280", ((45.0, 49.0, 66.0), 128.0 / 255.0)),
+            ("#abc8", ((170.0, 187.0, 204.0), 136.0 / 255.0)),
+            ("rgb(45 49 66 / 16%)", ((45.0, 49.0, 66.0), 0.16)),
+            ("rgb(17.647% 19.216% 25.882% / .16)",
+             ((44.99985, 49.0008, 65.9991), 0.16)),
+        )
+        for spelling, expected in color_cases:
+            parsed = PARSE_FILL(spelling)
+            if parsed is None or any(
+                abs(actual - wanted) > 0.001
+                for actual, wanted in zip(parsed[0] + (parsed[1],), expected[0] + (expected[1],))
+            ):
+                failures.append(
+                    "browser_valid_color_is_measured[{}]: got {!r}, expected {!r}".format(
+                        spelling, parsed, expected
+                    )
+                )
+            else:
+                print("OK: browser_valid_color_is_measured[{}]".format(spelling))
+
+        modern_rgb = light_source
+        rgb_edits = 0
+        for rank, alpha in LIGHT_RAMP:
+            anchor = 'data-share="{}" fill="rgba({},{})"'.format(
+                rank, LIGHT_INK, alpha
+            )
+            replacement = 'data-share="{}" fill="rgb(45 49 66 / {}%)"'.format(
+                rank, float(alpha) * 100
+            )
+            if anchor in modern_rgb:
+                modern_rgb = modern_rgb.replace(anchor, replacement, 1)
+                rgb_edits += 1
+        if rgb_edits != len(LIGHT_RAMP):
+            failures.append("could not build the space-separated RGB ramp fixture")
+        else:
+            code, output = run(write(directory, "modern-rgb.html", modern_rgb))
+        if rgb_edits == len(LIGHT_RAMP) and code != 0:
+            failures.append(
+                "space_separated_rgb_ramp_passes: exit {} - {}".format(code, output.strip())
+            )
+        elif rgb_edits == len(LIGHT_RAMP):
+            print("OK: space_separated_rgb_ramp_passes")
 
         # 3. The defect exactly as it shipped: the light skin's sentence over the
         #    dark skin's white-ink ramp.

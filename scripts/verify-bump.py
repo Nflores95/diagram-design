@@ -106,6 +106,7 @@ ATTR_RE = re.compile(
 )
 DECLARES_RANKS_RE = re.compile(r"\bdata-ranks\s*=", re.IGNORECASE)
 NUM_RE = re.compile(r"[-+]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][-+]?\d+)?")
+PATH_COMMAND_RE = re.compile(r"[AaCcHhLlMmQqSsTtVvZz]")
 RANK_LABEL_RE = re.compile(r"^#(\d+)$")
 
 # Rank is ordinal and the shipped coordinates are integers, so the only slack
@@ -200,7 +201,15 @@ def looks_like_bump(path: Path, source: str) -> bool:
 
 def parse_d(d: str):
     """(commands, points) for a polyline path, or (None, None) if unreadable."""
-    commands = re.findall(r"[A-Za-z]", d)
+    # `e` and `E` belong to scientific-notation numbers, not SVG's command
+    # alphabet. Remove complete numbers before checking the residue so valid
+    # coordinates such as 4.4e2 are not mistaken for relative commands, while
+    # an actual unknown letter still fails closed.
+    residue = NUM_RE.sub("", d)
+    residue = PATH_COMMAND_RE.sub("", residue)
+    if re.sub(r"[\s,]+", "", residue):
+        return None, None
+    commands = PATH_COMMAND_RE.findall(d)
     numbers = [float(n) for n in NUM_RE.findall(d)]
     if len(numbers) % 2 != 0:
         return None, None

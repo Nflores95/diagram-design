@@ -19,7 +19,7 @@ THE INVARIANT
 A visible string asserting a direction of tone must agree with the ramp it
 describes, measured on that file's own paper. Three steps:
 
-1. RAMP - fills of the form `rgba(r,g,b,a)` that share one ink triple and each
+1. RAMP - translucent rgb()/rgba() or hex fills that share one ink triple and each
    carry a rank attribute (`data-share` / `data-value` / `data-size`). Sorted by
    rank, their opacities must move strictly one way. The accent cell drops out
    for free: it is painted in a different ink triple, so it never joins the
@@ -88,19 +88,15 @@ RANK_ATTRS = ("data-share", "data-value", "data-size")
 ELEMENT_RE = re.compile(
     r"<(?P<tag>rect|circle|path|ellipse|polygon)\b(?P<attrs>[^>]*?)/?>", re.IGNORECASE
 )
-ATTR_RE = re.compile(r'(?P<name>[\w:-]+)="(?P<value>[^"]*)"')
-RGBA_RE = re.compile(
-    r"rgba?\(\s*(?P<r>[\d.]+)\s*,\s*(?P<g>[\d.]+)\s*,\s*(?P<b>[\d.]+)\s*"
-    r"(?:,\s*(?P<a>[\d.]+)\s*)?\)",
-    re.IGNORECASE,
+ATTR_RE = re.compile(
+    r"""(?P<name>[\w:-]+)\s*=\s*(?P<quote>["'])(?P<value>.*?)(?P=quote)""",
+    re.DOTALL,
 )
-HEX_RE = re.compile(r"#(?P<hex>[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b")
+RGB_RE = re.compile(r"^\s*rgba?\(\s*(?P<body>.*?)\s*\)\s*$", re.IGNORECASE)
+HEX_RE = re.compile(
+    r"^\s*#(?P<hex>[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})\s*$"
+)
 PAPER_VAR_RE = re.compile(r"--color-paper\s*:\s*(?P<value>[^;}]+)", re.IGNORECASE)
-# The full-bleed backdrop, used when the stylesheet does not declare the token.
-BACKDROP_RE = re.compile(
-    r'<rect\b[^>]*\bwidth="100%"[^>]*\bheight="100%"[^>]*\bfill="(?P<fill>[^"]+)"',
-    re.IGNORECASE,
-)
 
 # Copy a reader - or a screen reader - actually receives as a statement: rendered
 # SVG strings, the accessible description, and the editorial prose the full
@@ -251,34 +247,76 @@ def excerpt(text):
     return text[: EXCERPT_CHARS - 1] + "…"
 
 
-def parse_hex(value):
-    match = HEX_RE.search(value)
+def parse_hex_fill(value):
+    """(ink triple, alpha) for CSS's 3/4/6/8-digit hex forms."""
+    match = HEX_RE.match(value)
     if match is None:
         return None
     digits = match.group("hex")
-    if len(digits) == 3:
+    if len(digits) in (3, 4):
         digits = "".join(character * 2 for character in digits)
-    return tuple(float(int(digits[index : index + 2], 16)) for index in (0, 2, 4))
+    channels = tuple(float(int(digits[index : index + 2], 16)) for index in (0, 2, 4))
+    alpha = 1.0 if len(digits) == 6 else int(digits[6:8], 16) / 255.0
+    return channels, alpha
+
+
+def parse_channel(token):
+    token = token.strip()
+    try:
+        if token.endswith("%"):
+            value = float(token[:-1]) * 2.55
+        else:
+            value = float(token)
+    except ValueError:
+        return None
+    return value if 0.0 <= value <= 255.0 else None
+
+
+def parse_alpha(token):
+    token = token.strip()
+    try:
+        value = float(token[:-1]) / 100.0 if token.endswith("%") else float(token)
+    except ValueError:
+        return None
+    return value if 0.0 <= value <= 1.0 else None
+
+
+def parse_rgb(value):
+    """(ink triple, alpha) for legacy and CSS Color 4 rgb()/rgba()."""
+    match = RGB_RE.match(value)
+    if match is None:
+        return None
+    body = match.group("body")
+    if body.count("/") > 1:
+        return None
+    color_part, separator, alpha_part = body.partition("/")
+    if "," in color_part:
+        parts = [part.strip() for part in color_part.split(",")]
+        # The legacy fourth comma component is alpha. Slash alpha cannot be
+        # mixed with legacy comma channels.
+        if separator:
+            return None
+        elif len(parts) == 4:
+            alpha_part = parts.pop()
+            separator = "/"
+        elif len(parts) != 3:
+            return None
+    else:
+        parts = color_part.split()
+        if len(parts) != 3:
+            return None
+    channels = tuple(parse_channel(part) for part in parts)
+    if any(channel is None for channel in channels):
+        return None
+    alpha = parse_alpha(alpha_part) if separator else 1.0
+    if alpha is None:
+        return None
+    return channels, alpha
 
 
 def parse_fill(value):
     """(ink triple, alpha) for a solid or translucent fill, else None."""
-    match = RGBA_RE.search(value)
-    if match is not None:
-        try:
-            channels = tuple(float(match.group(name)) for name in ("r", "g", "b"))
-            alpha = 1.0 if match.group("a") is None else float(match.group("a"))
-        except ValueError:
-            return None
-        if not all(0.0 <= channel <= 255.0 for channel in channels):
-            return None
-        if not 0.0 <= alpha <= 1.0:
-            return None
-        return channels, alpha
-    triple = parse_hex(value)
-    if triple is None:
-        return None
-    return triple, 1.0
+    return parse_rgb(value) or parse_hex_fill(value)
 
 
 def srgb_to_linear(channel):
@@ -310,12 +348,21 @@ def resolve_paper(source):
     """
     match = PAPER_VAR_RE.search(source)
     if match is not None:
-        triple = parse_hex(match.group("value"))
-        if triple is not None:
-            return triple
-    match = BACKDROP_RE.search(source)
-    if match is not None:
-        parsed = parse_fill(match.group("fill"))
+        parsed = parse_fill(match.group("value"))
+        if parsed is not None and parsed[1] == 1.0:
+            return parsed[0]
+    # The full-bleed backdrop is the fallback when no stylesheet token exists.
+    # Parse it through the same quote-neutral attribute reader as ramp members.
+    for element in ELEMENT_RE.finditer(source):
+        if element.group("tag").lower() != "rect":
+            continue
+        attrs = {}
+        for attribute in ATTR_RE.finditer(element.group("attrs")):
+            if attribute.group("name") not in attrs:
+                attrs[attribute.group("name")] = attribute.group("value")
+        if attrs.get("width") != "100%" or attrs.get("height") != "100%":
+            continue
+        parsed = parse_fill(attrs.get("fill", ""))
         if parsed is not None and parsed[1] == 1.0:
             return parsed[0]
     return None
@@ -363,7 +410,10 @@ def collect_members(source):
         for name, value in attrs.items():
             # A translucent fill wins over the mask's opaque one, and a rank
             # attribute is adopted from whichever twin declared it.
-            if name not in existing[0] or (name == "fill" and "rgba" in value.lower()):
+            parsed_fill = parse_fill(value) if name == "fill" else None
+            if name not in existing[0] or (
+                name == "fill" and parsed_fill is not None and 0.0 < parsed_fill[1] < 1.0
+            ):
                 existing[0][name] = value
         existing[1] = min(existing[1], match.start())
 

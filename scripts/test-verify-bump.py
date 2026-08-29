@@ -434,6 +434,31 @@ def main() -> int:
             source, "cannot verify its positions",
             "a series path this checker cannot read",
         )
+
+        # Scientific notation is part of SVG's number grammar. Its exponent
+        # marker is not an `e` path command, so a browser-valid path spelling
+        # the same points this way must still verify.
+        scientific = source.replace(
+            FOCAL_D,
+            'd="M3.2e2,8.8e1 L4.4e2,1.44e2 L5.6e2,2.56e2 L6.8e2,3.68e2"',
+            1,
+        )
+        code, output = run(write(directory, "scientific-notation.html", scientific))
+        if code != 0:
+            failures.append(
+                "scientific notation in a valid path was rejected: %s" % output.strip()
+            )
+        else:
+            print("OK: scientific notation is parsed as numbers, not path commands")
+
+        # Restricting command recognition to SVG's real command alphabet must
+        # not make unknown letters disappear from otherwise plausible data.
+        case(
+            failures, directory, "unknown-command",
+            source.replace(FOCAL_D, 'd="M320,88 X440,144 L560,256 L680,368"', 1),
+            source, "cannot verify its positions",
+            "an unknown SVG path command",
+        )
         case(
             failures, directory, "count-mismatch",
             source.replace('data-ranks="1,2,4,6"', 'data-ranks="1,2,4"', 1),
